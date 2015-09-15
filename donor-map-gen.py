@@ -98,7 +98,7 @@ while (count < num_projects):
 pbar.finish()
 
 geo_data = [{'name': 'countries',
-             'url': 'https://raw.githubusercontent.com/wrobstory/vincent_map_data/master/world-countries.topo.json',
+             'url': 'https://raw.githubusercontent.com/wingmanzz/Python-Visualizations/master/world-countries.topo.json',
              'feature': 'world-countries'}]
 
 country_dict[donating_org] = addNonDonatedCountries(country_dict[donating_org], get_id)
@@ -108,11 +108,11 @@ receiving_df = pd.DataFrame(list(country_dict[donating_org].iteritems()), column
 merged = pd.merge(receiving_df, country_df, on='iso_a3', how='inner')
 
 # Uses vincent to create a map in vega format
-vis = vincent.Map(data=merged, geo_data=geo_data, scale=1000, projection='patterson',
+vis = vincent.Map(data=merged, geo_data=geo_data, projection='patterson',
           data_bind='total_received', data_key='iso_a3',
           map_key={'countries': 'id'})
 
-vis.legend(title="Donation Amount")
+vis.legend(title="Aid Flows")
 json_file_name = donating_org.replace(' ', '_') + '_donations.json'
 png_file_name = donating_org.replace(' ', '_') + '_donations.png'
 vis.to_json(json_file_name)
