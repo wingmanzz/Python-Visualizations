@@ -5,15 +5,32 @@ import urllib2
 from progressbar import ProgressBar
 import os
 import sys
+from StringIO import StringIO
+import gzip
+import operator
+
 
 # Gets project data from AidData project api for an organization indicated by its AidData api id
 def getProjectData(index, organization, years):
     url = 'http://api.aiddata.org/aid/project?size=50&fo=' + str(organization) + '&from=' + str(index) + '&y=' + str(years)
-    result = json.load(urllib2.urlopen(url))
+    
+    request = urllib2.Request(url)
+    
+    #we must check the return to see if its gzipped, some api calls return gzip
+    request.add_header('Accept-encoding', 'gzip')
+    response = urllib2.urlopen(request)
+    if response.info().get('Content-Encoding') == 'gzip':
+        buf = StringIO(response.read())
+        f = gzip.GzipFile(fileobj=buf)
+        data = f.read()
+    else:
+    	data = response.read()
+
+    result = json.loads(data)
     return result
 
-# Adds countries that have not received donations to the list so that they can be displayed on the map
-def addNonDonatedCountries(donor_dict, world):
+# Adds countries that have not received $ to the list so that they can be displayed on the map
+def addNonFlowCountries(donor_dict, world):
     for country in world['objects']['world-countries']['geometries']:
         if country['id'] not in donor_dict:
             donor_dict[country['id']] = 0.0
@@ -50,12 +67,13 @@ end_year = int(sys.argv[3])
 # start_year = 2004
 # end_year = 2013
 
-url = 'http://api.aiddata.org/aid/project?size=50&fo=' + str(organization_id)
+year_range = getYearString(start_year, end_year)
+url = 'http://api.aiddata.org/aid/project?size=50&fo=' + str(organization_id)+'&y=' + str(year_range)
 organizations_url = 'http://api.aiddata.org/data/origin/organizations?'
 json_orgs = json.load(urllib2.urlopen(organizations_url))
 donating_org = ''
 
-# Finds the donating organization based on the id
+# Finds the organization based on the id
 for org in json_orgs['hits']:
     if org['id'] == organization_id:
         donating_org = org['name']
@@ -65,8 +83,8 @@ print 'Creating map for ' + donating_org
 
 json_result = json.load(urllib2.urlopen(url))
 num_projects = json_result['project_count']
-year_range = getYearString(start_year, end_year)
 count = 0
+totamt = 0
 country_dict = {}
 pbar = ProgressBar(maxval=num_projects).start()
 
@@ -82,6 +100,7 @@ while (count < num_projects):
                     donor = transactions['tr_funding_org']['name']
                     receiver = transactions['tr_receiver_country']['iso3']
                     amount = transactions['tr_constant_value']
+                    totamt += amount
                     if donor not in country_dict:
                         country_dict[donor] = {}
                     if receiver not in country_dict[donor]:
@@ -97,18 +116,23 @@ while (count < num_projects):
 
 pbar.finish()
 
+#sort by amount
+dict_values = country_dict[donor]
+#print dict_values
+sorted_x = sorted(dict_values.items(), key=operator.itemgetter(1), reverse=True)
+print sorted_x
 geo_data = [{'name': 'countries',
              'url': 'https://raw.githubusercontent.com/wingmanzz/Python-Visualizations/master/world-countries.topo.json',
              'feature': 'world-countries'}]
 
-country_dict[donating_org] = addNonDonatedCountries(country_dict[donating_org], get_id)
+country_dict[donating_org] = addNonFlowCountries(country_dict[donating_org], get_id)
 
 receiving_df = pd.DataFrame(list(country_dict[donating_org].iteritems()), columns=['iso_a3', 'total_received'])
 
 merged = pd.merge(receiving_df, country_df, on='iso_a3', how='inner')
 
 # Uses vincent to create a map in vega format
-vis = vincent.Map(data=merged, geo_data=geo_data, projection='patterson',
+vis = vincent.Map(data=merged, geo_data=geo_data, brew="Greens", projection='patterson',
           data_bind='total_received', data_key='iso_a3',
           map_key={'countries': 'id'})
 
