@@ -120,6 +120,7 @@ pbar.finish()
 dict_values = country_dict[donor]
 #print dict_values
 sorted_x = sorted(dict_values.items(), key=operator.itemgetter(1), reverse=True)
+#print sorted_x
 geo_data = [{'name': 'countries',
              'url': 'https://raw.githubusercontent.com/wingmanzz/Python-Visualizations/master/world-countries.topo.json',
              'feature': 'world-countries'}]
@@ -131,14 +132,38 @@ receiving_df = pd.DataFrame(list(country_dict[donating_org].iteritems()), column
 merged = pd.merge(receiving_df, country_df, on='iso_a3', how='inner')
 
 # Uses vincent to create a map in vega format
-vis = vincent.Map(data=merged, geo_data=geo_data, brew="Greens", projection='patterson',
+vis = vincent.Map(data=merged, geo_data=geo_data, brew="Greens", projection='times', scale=250,
           data_bind='total_received', data_key='iso_a3',
           map_key={'countries': 'id'})
+vis.padding = {'top': 210, 'left': 80, 'bottom': 250, 'right': 80}
 
-vis.legend(title="Aid Flows")
 json_file_name = donating_org.replace(' ', '_') + '_donations.json'
 png_file_name = donating_org.replace(' ', '_') + '_donations.png'
 vis.to_json(json_file_name)
 # Transforms the vega json into a donor map image using the vg2png command line function
 os.system("vg2png " + json_file_name + " " + png_file_name)
 
+donating_org = donating_org.replace("'","")
+
+#sets title
+os.system("convert " + png_file_name + " -pointsize 26 -gravity north -annotate +10+33 'Distribution of " + donating_org + "'\\''" + "s Official Development Assistance (ODA), " + str(start_year) + "-" + str(end_year) + "' "  + png_file_name)
+
+#sets 'top 10 partner countries' text
+os.system("convert " + png_file_name + " -pointsize 22 -annotate +50+720 'Top 10 Partner Countries' " + png_file_name)
+
+#sets offset for top 10 partner countries chart
+offset = 750
+#loop generates 2 columns of 5 rows
+for i in range(0, len(sorted_x)):
+    if i == 10:
+        break
+    if i < 5:
+        x_coord = 50
+    else:
+        x_coord = 600
+    y_coord = offset + ((i % 5) * 30)
+    #generates first part of column (the country name)
+    os.system("convert " + png_file_name + " -pointsize 22 -annotate +" + str(x_coord) + "+" + str(y_coord) + " '" + str(i+1) + ". " + sorted_x[i][0] + "' " + png_file_name)
+    #generates second part of column (the percentage and dollar ammount)
+    os.system("convert " + png_file_name + " -pointsize 22 -annotate +" + str(x_coord+250) + "+" + str(y_coord) + " '(" + str(round((sorted_x[i][1] / totamt * 100), 1)) + "\%, " + "replace" + " USD)' " + png_file_name)
+    
