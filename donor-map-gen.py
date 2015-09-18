@@ -8,11 +8,27 @@ import sys
 from StringIO import StringIO
 import gzip
 import operator
+import requests
+from math import log10, floor
 
+def iso3tocountry(iso3):
+    if (iso3 == 'XXK'):
+        return "Kosovo"
+    if (iso3 == 'MYT'):
+        return "Mayotte"
+    url = 'http://api.worldbank.org/countries/'+iso3+'?format=json'
+    r = requests.get(url)
+    data = json.loads(str(r.content))
+    print iso3
+    s = data[1][0]['name']
+    s = s.replace("\'","'\\''")
+    return s
 
+   
+    
 # Gets project data from AidData project api for an organization indicated by its AidData api id
 def getProjectData(index, organization, years):
-    url = 'http://api.aiddata.org/aid/project?size=50&fo=' + str(organization) + '&from=' + str(index) + '&y=' + str(years)
+    url = 'http://api.aiddata.org/aid/project?size=50&src=1,2,3,4,5,6,7,3249668&fo=' + str(organization) + '&from=' + str(index) + '&y=' + str(years)
     
     request = urllib2.Request(url)
     
@@ -118,9 +134,8 @@ pbar.finish()
 
 #sort by amount
 dict_values = country_dict[donor]
-#print dict_values
 sorted_x = sorted(dict_values.items(), key=operator.itemgetter(1), reverse=True)
-#print sorted_x
+
 geo_data = [{'name': 'countries',
              'url': 'https://raw.githubusercontent.com/wingmanzz/Python-Visualizations/master/world-countries.topo.json',
              'feature': 'world-countries'}]
@@ -151,10 +166,20 @@ os.system("convert " + png_file_name + " -pointsize 26 -gravity north -annotate 
 #sets 'top 10 partner countries' text
 os.system("convert " + png_file_name + " -pointsize 22 -annotate +50+720 'Top 10 Partner Countries' " + png_file_name)
 
+#function to round to nearest tenth of a mil
+def round_to_1(x):
+    #x = round(x, -int(floor(log10(x))))
+    #return x
+    x = round(x)
+    x = x / 1000000
+    x = round(x,1)
+    return str(x) + " million"
+
 #sets offset for top 10 partner countries chart
 offset = 750
 #loop generates 2 columns of 5 rows
 for i in range(0, len(sorted_x)):
+    name = iso3tocountry(sorted_x[i][0])
     if i == 10:
         break
     if i < 5:
@@ -163,7 +188,7 @@ for i in range(0, len(sorted_x)):
         x_coord = 600
     y_coord = offset + ((i % 5) * 30)
     #generates first part of column (the country name)
-    os.system("convert " + png_file_name + " -pointsize 22 -annotate +" + str(x_coord) + "+" + str(y_coord) + " '" + str(i+1) + ". " + sorted_x[i][0] + "' " + png_file_name)
+    os.system("convert " + png_file_name + " -pointsize 20 -fill '#75B654' -annotate +" + str(x_coord) + "+" + str(y_coord) + " '" + str(i+1) + ". " + name + "' " + png_file_name)
+    os.system("convert " + png_file_name + " -pointsize 20 -annotate +" + str(x_coord) + "+" + str(y_coord) + " '" + str(i+1) + ". " + "' " + png_file_name)
     #generates second part of column (the percentage and dollar ammount)
-    os.system("convert " + png_file_name + " -pointsize 22 -annotate +" + str(x_coord+250) + "+" + str(y_coord) + " '(" + str(round((sorted_x[i][1] / totamt * 100), 1)) + "\%, " + "replace" + " USD)' " + png_file_name)
-    
+    os.system("convert " + png_file_name + " -pointsize 20 -annotate +" + str(x_coord+250) + "+" + str(y_coord) + " '(" + str(round((sorted_x[i][1] / totamt * 100), 1)) + "\%, " + round_to_1(sorted_x[i][1]) + " USD)' " + png_file_name)
