@@ -1,7 +1,6 @@
 import pandas as pd
 import json
 import vincent
-import urllib2
 from progressbar import ProgressBar
 import os
 import sys
@@ -39,20 +38,8 @@ def iso3tocountry(iso3):
 # Gets project data from AidData project api for an organization indicated by its AidData api id
 def getProjectData(index, organization, years):
     url = 'http://api.aiddata.org/aid/project?size=50&src=1,2,3,4,5,6,7,3249668&fo=' + str(organization) + '&from=' + str(index) + '&y=' + str(years)
-    
-    request = urllib2.Request(url)
-    
-    #we must check the return to see if its gzipped, some api calls return gzip
-    request.add_header('Accept-encoding', 'gzip')
-    response = urllib2.urlopen(request)
-    if response.info().get('Content-Encoding') == 'gzip':
-        buf = StringIO(response.read())
-        f = gzip.GzipFile(fileobj=buf)
-        data = f.read()
-    else:
-    	data = response.read()
-
-    result = json.loads(data)
+    r = requests.get(url)
+    result = json.loads(str(r.content))
     return result
 
 # Adds countries that have not received $ to the list so that they can be displayed on the map
@@ -71,9 +58,8 @@ def getYearString(start_year, finish_year):
         start_year += 1
     result += str(finish_year)
     return result
-
-request = urllib2.urlopen('https://raw.githubusercontent.com/wingmanzz/Python-Visualizations/master/world-countries.topo.json')
-get_id = json.load(request)
+r = requests.get('https://raw.githubusercontent.com/wingmanzz/Python-Visualizations/master/world-countries.topo.json')
+get_id = json.loads(str(r.content))
 
 # create a dataframe of iso-3 codes in for use in builiding the map
 geometries = get_id['objects']['world-countries']['geometries']
@@ -86,18 +72,20 @@ start_year = int(sys.argv[1])
 end_year = int(sys.argv[2])
 
 year_range = getYearString(start_year, end_year)
-organizations_url = 'http://api.aiddata.org/data/origin/providers?'
-json_orgs = json.load(urllib2.urlopen(organizations_url))
-
+organizations_url = 'http://api.aiddata.org/data/origin/organizations?'
+r = requests.get(organizations_url)
+json_orgs = json.loads(str(r.content))
 
 # Finds the organization based on the id
 for org in json_orgs['hits']:
 	donating_org = org['name']
 	organization_id = org['id']
 	url = 'http://api.aiddata.org/aid/project?size=50&fo=' + str(org['id'])+'&y=' + str(year_range)
+	print url
 	print 'Creating map for ' + donating_org
 
-	json_result = json.load(urllib2.urlopen(url))
+	r = requests.get(url)
+	json_result = json.loads(str(r.content))
 	num_projects = json_result['project_count']
 	
 	# if we have projects, do it!
@@ -174,17 +162,13 @@ for org in json_orgs['hits']:
 		os.system(cmd)
 
 		donating_org = donating_org.replace("'","")
-
-		#sets title
-		#os.system("convert " + png_file_name + " -pointsize 22 -gravity north -annotate +10+33 'Distribution of " + donating_org + "'\\''" + "s Official Development Assistance (ODA), " + str(start_year) + "-" + str(end_year) + "' "  + png_file_name)
-
+		
 		max = 0
 		if (len(sorted_x) > 0):
 			max = sorted_x[0][1]
 		os.system("convert " + png_file_name + " ../green_ramp_donor_profiles.png -geometry +45+435 -composite " + png_file_name)
 		os.system("convert " + png_file_name + " -pointsize 12 -weight Bold -annotate +45+425 'Commitments (USD 2011)' " + png_file_name)
 		os.system("convert " + png_file_name + " -pointsize 12 -annotate +88+443 '" + "{:,.2f}".format(max) + "' -annotate +88+653 '0' " + png_file_name)
-		#os.system("convert " + png_file_name + " -resize 1200x1200 " + png_file_name)
 		#sets 'top 10 partner countries' text
 		os.system("convert " + png_file_name + " -pointsize 20 -annotate +50+720 'Top 10 Partner Countries' " + png_file_name)
 
