@@ -24,7 +24,7 @@ def iso3tocountry(iso3):
     if (iso3 == 'AIA'):
         return "Anguilla"
     if (iso3 == 'COD'):
-        return "Democratic Repblic of Congo"
+        return "Democratic Republic of Congo"
     url = 'http://api.worldbank.org/countries/'+iso3+'?format=json'
     r = requests.get(url)
     data = json.loads(str(r.content))
@@ -32,8 +32,6 @@ def iso3tocountry(iso3):
     s = data[1][0]['name']
     s = s.replace("\'","'\\''")
     return s
-
-   
     
 # Gets project data from AidData project api for an organization indicated by its AidData api id
 def getProjectData(index, organization, years):
@@ -81,7 +79,6 @@ for org in json_orgs['hits']:
 	donating_org = org['name']
 	organization_id = org['id']
 	url = 'http://api.aiddata.org/aid/project?size=50&fo=' + str(org['id'])+'&y=' + str(year_range)
-	print url
 	print 'Creating map for ' + donating_org
 
 	r = requests.get(url)
