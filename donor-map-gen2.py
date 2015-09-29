@@ -26,17 +26,10 @@ def iso3tocountry(iso3):
     url = 'http://api.worldbank.org/countries/'+iso3+'?format=json'
     r = requests.get(url)
     data = json.loads(str(r.content))
-    print iso3
     s = data[1][0]['name']
     s = s.replace("\'","'\\''")
     return s
-    
-# Gets project data from AidData project api for an organization indicated by its AidData api id
-def getProjectData(index, organization, years):
-    url = 'http://api.aiddata.org/aid/project?size=50&src=1,2,3,4,5,6,7,3249668&fo=' + str(organization) + '&from=' + str(index) + '&y=' + str(years)
-    r = requests.get(url)
-    result = json.loads(str(r.content))
-    return result
+
 
 # Adds countries that have not received $ to the list so that they can be displayed on the map
 def addNonFlowCountries(donor_dict, world):
@@ -54,7 +47,8 @@ def getYearString(start_year, finish_year):
         start_year += 1
     result += str(finish_year)
     return result
-r = requests.get('https://raw.githubusercontent.com/wingmanzz/Python-Visualizations/master/world-countries.topo.json')
+
+r = requests.get('https://raw.githubusercontent.com/wingmanzz/Python-Visualizations/master/assets/world-countries.topo.json')
 get_id = json.loads(str(r.content))
 
 # create a dataframe of iso-3 codes in for use in builiding the map
@@ -149,7 +143,7 @@ for org in json_orgs['hits']:
         png_file_name = png_file_name.encode('ascii', 'ignore')
         donating_org = donating_org.encode('ascii', 'ignore')
         vis.to_json(json_file_name)
-        cmd = "vg2png " + json_file_name + " " + png_file_name
+        cmd = "vg2png output/" + json_file_name + " output/" + png_file_name
         # Transforms the vega json into a donor map image using the vg2png command line function
         os.system(cmd)
 
@@ -158,11 +152,11 @@ for org in json_orgs['hits']:
         max = 0
         if (len(sorted_x) > 0):
             max = sorted_x[0][1]
-        os.system("convert " + png_file_name + " assets/green_ramp_donor_profiles.png -geometry +45+435 -composite " + png_file_name)
-        os.system("convert " + png_file_name + " -pointsize 12 -weight Bold -annotate +45+425 'Commitments (USD 2011)' " + png_file_name)
-        os.system("convert " + png_file_name + " -pointsize 12 -annotate +88+443 '" + "{:,.2f}".format(max) + "' -annotate +88+653 '0' " + png_file_name)
+        os.system("convert " + png_file_name + " assets/green_ramp_donor_profiles.png -geometry +45+435 -composite output/" + png_file_name)
+        os.system("convert " + png_file_name + " -pointsize 12 -weight Bold -annotate +45+425 'Commitments (USD 2011)' output/" + png_file_name)
+        os.system("convert " + png_file_name + " -pointsize 12 -annotate +88+443 '" + "{:,.2f}".format(max) + "' -annotate +88+653 '0' output/" + png_file_name)
         #sets 'top 10 partner countries' text
-        os.system("convert " + png_file_name + " -pointsize 20 -annotate +50+720 'Top 10 Partner Countries' " + png_file_name)
+        os.system("convert " + png_file_name + " -pointsize 20 -annotate +50+720 'Top 10 Partner Countries' output/" + png_file_name)
 
         #function to round to nearest tenth of a mil
         def round_to_1(x):
@@ -188,7 +182,7 @@ for org in json_orgs['hits']:
             else:
                 millions = "0.0"
             #generates first part of column (the country name)
-            os.system("convert " + png_file_name + " -pointsize 20 -fill '#75B654' -annotate +" + str(x_coord) + "+" + str(y_coord) + " '" + str(i+1) + ". " + name + "' " + png_file_name)
-            os.system("convert " + png_file_name + " -pointsize 20 -annotate +" + str(x_coord) + "+" + str(y_coord) + " '" + str(i+1) + ". " + "' " + png_file_name)
+            os.system("convert output/" + png_file_name + " -pointsize 20 -fill '#75B654' -annotate +" + str(x_coord) + "+" + str(y_coord) + " '" + str(i+1) + ". " + name + "' " + png_file_name)
+            os.system("convert output/" + png_file_name + " -pointsize 20 -annotate +" + str(x_coord) + "+" + str(y_coord) + " '" + str(i+1) + ". " + "' " + png_file_name)
             #generates second part of column (the percentage and dollar ammount)
-            os.system("convert " + png_file_name + " -pointsize 20 -annotate +" + str(x_coord+250) + "+" + str(y_coord) + " '(" + millions + "\%, " + round_to_1(sorted_x[i][1]) + " USD)' " + png_file_name)
+            os.system("convert output/" + png_file_name + " -pointsize 20 -annotate +" + str(x_coord+250) + "+" + str(y_coord) + " '(" + millions + "\%, " + round_to_1(sorted_x[i][1]) + " USD)' " + png_file_name)
