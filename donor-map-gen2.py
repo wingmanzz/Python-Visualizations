@@ -78,7 +78,7 @@ r = requests.get(rcv_url)
 rcv_orgs = json.loads(str(r.content))
 
 #iso2 to iso3 translate
-iso_url = 'http://country.io/iso3.json'
+iso_url = 'https://github.com/wingmanzz/Python-Visualizations/raw/master/assets/countries.json'
 r = requests.get(iso_url)
 isos = json.loads(str(r.content))
 
